@@ -1,0 +1,45 @@
+<!-- node-content -->
+<div>
+  <div ref="vegaCanvas" class="vegaRenderer"></div>
+</div>
+<!-- option-panel -->
+<div class="vegaSpecContainer">
+  <div>
+    <select
+      name="viewSelection"
+      id="view_selection"
+      @change="onSelectedViewChanged">
+
+      <option v-for="viewId in viewsInVegaSpec" :value="viewId" :key="viewId">{{ viewId }}</option>
+    </select>
+    <div ref="selectedViewVegaCanvas" class="vegaRenderer" style="max-width:200px;max-height:300px;overflow:auto"></div>
+  </div>
+  <div>
+    <div>X Column</div>
+    <column-select v-model="xColumn"
+      :columns="columnSelectOptions"
+      @change="onSelectXColumn"
+    ></column-select>
+  </div>
+  <div>
+    <div>Y Column</div>
+    <column-select v-model="yColumn"
+      :columns="columnSelectOptions"
+      @change="onSelectYColumn"
+    ></column-select>
+  </div>
+  <div>
+    <div>Color</div>
+    <column-select v-model="colorColumn"
+      :columns="columnSelectOptions"
+      @change="onSelectColorColumn"
+    ></column-select>
+  </div>
+  <div>
+    <textarea v-model.string="vegaSpecString"
+      name="vegaSpecInput"
+      id="vega_spec_input"
+      cols="20" rows="50"
+      @change="onInputSpecChanged"></textarea>
+  </div>
+</div>

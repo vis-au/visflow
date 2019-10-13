@@ -1,7 +1,6 @@
 import { VueConstructor } from 'vue';
 
 import { NodeType } from '@/store/dataflow/types';
-import Visualization from '@/components/visualization/visualization';
 import DataSource from '@/components/data-source/data-source';
 import Table from '@/components/table/table';
 import Scatterplot from '@/components/scatterplot/scatterplot';
@@ -24,6 +23,7 @@ import SeriesTranspose from '@/components/series-transpose/series-transpose';
 import Clustering from '@/components/clustering/clustering';
 import TableJoin from '@/components/table-join/table-join';
 import NeuralNetwork from '@/components/neural-network/neural-network';
+import VegaView from '@/components/vega-viewer/vegaview';
 
 const VISUALIZATION_TAGS = 'vis plot chart draw render';
 const MULTIDIMENSIONAL_TAGS = ' multi md';
@@ -50,6 +50,14 @@ export const nodeTypes: NodeType[] = [
     constructor: Scatterplot,
     tags: VISUALIZATION_TAGS + ' 2d',
     aliases: ['scp'],
+  },
+  {
+    id: 'vegaimportview',
+    title: 'Vega Import View',
+    imgSrc: require('@/imgs/vegaview.svg'),
+    constructor: VegaView,
+    tags: VISUALIZATION_TAGS + ' vega',
+    aliases: ['vgv'],
   },
   {
     id: 'parallel-coordinates',

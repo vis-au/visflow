@@ -35,6 +35,7 @@ module.exports = {
         },
         extensions: ['.html'],
       },
+      devtool: 'source-map',
       module: {
         rules: [
           {
