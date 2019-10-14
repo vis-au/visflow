@@ -1,7 +1,8 @@
+import { range } from 'd3-array';
 import _ from 'lodash';
 import { SpecParser, SpecCompiler, PlotView, InlineDatasetNode, View } from 'revize';
 import { SignalValue } from 'vega';
-import embed, { VisualizationSpec } from 'vega-embed';
+import embed from 'vega-embed';
 import { Component } from 'vue-property-decorator';
 
 import ColumnSelect from '@/components/column-select/column-select';
@@ -9,13 +10,14 @@ import FormInput from '@/components/form-input/form-input';
 import { Visualization, injectVisualizationTemplate } from '@/components/visualization';
 
 import { ValueType } from '@/data/parser';
-import { SubsetItem } from '@/data/package/subset-package';
-import TabularDataset, { TabularColumn } from '@/data/tabular-dataset';
+import SubsetPackage, { SubsetItem } from '@/data/package/subset-package';
+import TabularDataset, { TabularColumn, TabularRow } from '@/data/tabular-dataset';
 import { isNumericalType } from '@/data/util';
 import { VisualProperties } from '@/data/visuals';
 
 import * as history from './history';
 import template from './vegaview.html';
+import { VEGA_EXAMPLE_SPEC } from './vegaExampleSpec';
 
 interface VegaViewSave {
   useSVG: boolean;
@@ -25,26 +27,6 @@ const VEGA_BRUSH_SELECTION_SNIPPET = {
   selection: {
     brush: {
       type: 'interval',
-    },
-  },
-};
-
-const VEGA_EXAMPLE_SPEC: VisualizationSpec | string = {
-  $schema: 'https://vega.github.io/schema/vega-lite/v4.json',
-  description: 'Drag out a rectangular brush to highlight points.',
-  data: {values: []},
-  selection: {
-    brush: {
-      type: 'interval',
-    },
-  },
-  mark: 'point',
-  encoding: {
-    x: {field: 'Horsepower', type: 'quantitative'},
-    y: {field: 'Miles_per_Gallon', type: 'quantitative'},
-    color: {
-      condition: {selection: 'brush', field: 'Cylinders', type: 'ordinal'},
-      value: 'grey',
     },
   },
 };
@@ -129,6 +111,14 @@ export default class VegaView extends Visualization {
       // restore save file? check scatterplot.ts
     });
 
+    if (!!this.vegaSpec) {
+      this.rootView = this.specParser.parse(this.vegaSpec);
+      this.dataset = this.getDatasetFromSpec();
+      const outputPort = this.outputPortMap.out;
+      outputPort.updatePackage(new SubsetPackage(this.dataset));
+      this.portUpdated(outputPort);
+    }
+
     setTimeout(this.draw.bind(this), 1000);
   }
 
@@ -137,10 +127,10 @@ export default class VegaView extends Visualization {
       this.coverText = 'Please enter a Vega-lite spec in the side panel';
       return;
     }
-    if (!this.hasDataset()) {
-      this.coverText = 'No dataset';
-      return;
-    }
+    // if (!this.hasDataset()) {
+    //   this.coverText = 'No dataset';
+    //   return;
+    // }
 
     // keep this line as otherwise the view will not show
     this.coverText = '';
@@ -282,6 +272,8 @@ export default class VegaView extends Visualization {
 
     if (!dataset) {
       return;
+    } else if (!this.xColumn || !this.yColumn || !this.colorColumn) {
+      return;
     }
 
     const xColumn = dataset.getColumn(this.xColumn);
@@ -396,18 +388,81 @@ export default class VegaView extends Visualization {
     return isItemInBrush;
   }
 
+  private hasDatasetInSpec() {
+    if (!this.rootView) {
+      return false;
+    }
+
+    const datasetInSpec = this.rootView.dataTransformationNode;
+
+    if (!(datasetInSpec instanceof InlineDatasetNode)) {
+      return false;
+    } else if ((datasetInSpec.values as []).length === 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Generates a TabularDataset from any data that is present in the current Vega-lite
+   * specification.
+   */
+  private getDatasetFromSpec() {
+    const columns: TabularColumn[] = [];
+    const rows: TabularRow[] = [];
+    const dataset: TabularDataset = new TabularDataset({columns, rows});
+
+    if (!this.rootView) {
+      return dataset;
+    }
+
+    const datasetInSpec = this.rootView.dataTransformationNode as InlineDatasetNode;
+    dataset.setName(datasetInSpec.name);
+
+    if (!this.hasDatasetInSpec()) {
+      return dataset;
+    }
+
+    // get columns
+    Object.keys(datasetInSpec.values[0]).forEach((columnHeader, i) => {
+      columns.push({
+        index: i,
+        name: columnHeader,
+        type: ValueType.STRING,
+        hasDuplicate: false,
+      });
+    });
+
+    // get rows
+    (datasetInSpec.values as []).forEach(item => {
+      const row = Object.keys(item).map(key => item[key]);
+      rows.push(row);
+    });
+
+    return dataset;
+  }
+
   /**
    * Returns a list of items identical representing a row in the input data for every active item
    * of the input dataflow.
    */
   private getTransposedDataset() {
-    const dataset = this.getDataset();
-    const selectedItemIndeces = this.inputPortMap.in.getSubsetPackage()
-      .getItemIndices()
-      .sort();
+    let dataset: TabularDataset;
+    let selectedItemIndeces: number[] = [];
 
-    if (!dataset) {
+    if (this.hasDataset()) {
+      dataset = this.getDataset();
+    } else {
       return [];
+    }
+
+    if (this.hasDatasetInSpec()) {
+      selectedItemIndeces = range(dataset.getRows().length);
+    } else {
+      selectedItemIndeces = this.inputPortMap.in.getSubsetPackage()
+        .getItemIndices()
+        .sort();
     }
 
     // filter out rows that are not in the current selection
@@ -459,6 +514,10 @@ export default class VegaView extends Visualization {
       if (!!newSpec) {
         this.vegaSpec = newSpec;
         this.vegaSpecString = input;
+        this.dataset = this.getDatasetFromSpec();
+        const outputPort = this.outputPortMap.out;
+        outputPort.updatePackage(new SubsetPackage(this.dataset));
+        this.portUpdated(outputPort);
         this.findDefaultColumns();
       }
     }
