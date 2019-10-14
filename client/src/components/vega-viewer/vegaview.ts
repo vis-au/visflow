@@ -9,7 +9,7 @@ import ColumnSelect from '@/components/column-select/column-select';
 import FormInput from '@/components/form-input/form-input';
 import { Visualization, injectVisualizationTemplate } from '@/components/visualization';
 
-import { ValueType } from '@/data/parser';
+import { ValueType, checkToken, formatColumnType } from '@/data/parser';
 import SubsetPackage, { SubsetItem } from '@/data/package/subset-package';
 import TabularDataset, { TabularColumn, TabularRow } from '@/data/tabular-dataset';
 import { isNumericalType } from '@/data/util';
@@ -404,6 +404,11 @@ export default class VegaView extends Visualization {
     return true;
   }
 
+  private getColumnType(item: any, columnName: string) {
+    const type = checkToken(item[columnName]).type;
+    return type;
+  }
+
   /**
    * Generates a TabularDataset from any data that is present in the current Vega-lite
    * specification.
@@ -417,6 +422,7 @@ export default class VegaView extends Visualization {
       return dataset;
     }
 
+    // TODO: generalize to other dataset types
     const datasetInSpec = this.rootView.dataTransformationNode as InlineDatasetNode;
     dataset.setName(datasetInSpec.name);
 
@@ -429,8 +435,8 @@ export default class VegaView extends Visualization {
       columns.push({
         index: i,
         name: columnHeader,
-        type: ValueType.STRING,
-        hasDuplicate: false,
+        type: this.getColumnType(datasetInSpec.values[0], columnHeader),
+        hasDuplicate: true,
       });
     });
 
@@ -438,6 +444,10 @@ export default class VegaView extends Visualization {
     (datasetInSpec.values as []).forEach(item => {
       const row = Object.keys(item).map(key => item[key]);
       rows.push(row);
+    });
+
+    columns.forEach(column => {
+      formatColumnType(rows, column);
     });
 
     return dataset;

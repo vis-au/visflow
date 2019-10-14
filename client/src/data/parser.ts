@@ -67,7 +67,7 @@ export const isProbablyDate = (text: string | null | undefined): boolean => {
 };
 
 /** Parses a token and returns its value and type. */
-const checkToken = (text: string | number, ignoredTypes_?: ValueType[]):
+export const checkToken = (text: string | number, ignoredTypes_?: ValueType[]):
   { type: ValueType, value: number | string } => {
   const ignoredTypes = new Set<ValueType>(ignoredTypes_ ? ignoredTypes_ : []);
   text = text + ''; // Convert to string
@@ -164,7 +164,7 @@ const checkColumnType = (rows: TabularRows, columnIndex: number, name: string): 
   };
 };
 
-const formatColumnType = (rows: TabularRows, column: TabularColumn) => {
+export const formatColumnType = (rows: TabularRows, column: TabularColumn) => {
   for (const row of rows) {
     let value: number | string = row[column.index];
     if (column.type === ValueType.DATE) {
