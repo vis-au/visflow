@@ -193,6 +193,13 @@ export default class VegaView extends Visualization {
     const data = new InlineDatasetNode();
     data.values = this.getTransposedDataset();
     this.rootView.dataTransformationNode = data;
+
+    this.rootView.getFlatHierarchy().forEach(view => {
+      if (view !== this.rootView) {
+        view.dataTransformationNode = null;
+      }
+    });
+
     this.applyColumnsToView(this.rootView);
   }
 
@@ -226,19 +233,19 @@ export default class VegaView extends Visualization {
       return;
     }
 
-    const embedPromise = this.renderView(this.rootView, this.$refs.vegaCanvas as HTMLElement);
+    const renderPromise = this.renderView(this.rootView, this.$refs.vegaCanvas as HTMLElement);
 
-    if (!embedPromise) {
+    if (!renderPromise) {
       return;
     }
 
-    embedPromise.then(result => {
+    renderPromise.then(result => {
       const view = result.view;
 
       view.addSignalListener('brush', this.onViewBrushed);
-      view.addEventListener('mouseup', (event, item) => {
-        view.signal('brush_modify', 0);
-      });
+      // view.addEventListener('mouseup', (event, item) => {
+      //   view.signal('brush_modify', 0);
+      // });
     });
   }
 
@@ -272,7 +279,7 @@ export default class VegaView extends Visualization {
 
     if (!dataset) {
       return;
-    } else if (!this.xColumn || !this.yColumn || !this.colorColumn) {
+    } else if (this.xColumn === null || this.yColumn === null || this.colorColumn === null) {
       return;
     }
 
@@ -524,6 +531,7 @@ export default class VegaView extends Visualization {
       if (!!newSpec) {
         this.vegaSpec = newSpec;
         this.vegaSpecString = input;
+        this.rootView = this.specParser.parse(this.vegaSpec);
         this.dataset = this.getDatasetFromSpec();
         const outputPort = this.outputPortMap.out;
         outputPort.updatePackage(new SubsetPackage(this.dataset));
