@@ -243,9 +243,9 @@ export default class VegaView extends Visualization {
       const view = result.view;
 
       view.addSignalListener('brush', this.onViewBrushed);
-      // view.addEventListener('mouseup', (event, item) => {
-      //   view.signal('brush_modify', 0);
-      // });
+      view.addEventListener('mouseup', (event, item) => {
+        view.signal('brush_modify', 0);
+      });
     });
   }
 
@@ -319,6 +319,53 @@ export default class VegaView extends Visualization {
     return 'nominal';
   }
 
+  private onViewBrushedConnected(brush: SignalValue) {
+    const pkg = this.inputPortMap.in.getSubsetPackage();
+    const items = pkg.getItems();
+    const dataset = pkg.getDataset() as TabularDataset;
+
+    if (!dataset) {
+      return;
+    }
+
+    this.selection.clear();
+    const itemsInBrush = this.getItemsInBrush(dataset, items, brush);
+
+    itemsInBrush.forEach(i => this.selection.addItem(i.index));
+
+    this.computeSelection();
+  }
+
+  private onViewBrushedNotConnected(brush: SignalValue) {
+
+    const dataset = this.dataset as TabularDataset;
+    const items: SubsetItem[] = [];
+
+    // since there is no connected data flow at this point, there are no "filtered" items
+    // therefore, create dummy items for each entry in the dataset
+    for (let i = 0; i < dataset.getRows().length; i++) {
+      const item: SubsetItem = {
+        index: i,
+        visuals: {},
+      };
+
+      items.push(item);
+    }
+
+    if (!dataset) {
+      return;
+    }
+
+    this.selection.clear();
+    const itemsInBrush = this.getItemsInBrush(dataset, items, brush);
+
+    itemsInBrush.forEach(i => this.selection.addItem(i.index));
+
+    const pkg = new SubsetPackage(dataset, true);
+    const selectionPkg = pkg.subset(itemsInBrush.map(i => i.index));
+    this.outputPortMap.selection.updatePackage(selectionPkg);
+  }
+
   /**
    * Event listener for the Vega-lite "brush" signal. Adapts the brushed region from the canvas
    * to the input data flow of the vega-view node.
@@ -326,19 +373,12 @@ export default class VegaView extends Visualization {
    * @param brush the data returned by the vl brush event
    */
   private onViewBrushed(name: string = 'brush', brush: SignalValue) {
-    this.computeSelection();
 
-    const pkg = this.inputPortMap.in.getSubsetPackage();
-    const items = pkg.getItems();
-    const dataset = pkg.getDataset();
-
-    if (!dataset) {
-      return;
+    if (this.inputPortMap.in.isConnected()) {
+      this.onViewBrushedConnected(brush);
+    } else {
+      this.onViewBrushedNotConnected(brush);
     }
-
-    this.selection.clear();
-    this.getItemsInBrush(dataset, items, brush)
-      .forEach(i => this.selection.addItem(i.index));
 
     this.propagateSelection();
   }
