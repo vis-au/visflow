@@ -319,51 +319,40 @@ export default class VegaView extends Visualization {
     return 'nominal';
   }
 
-  private onViewBrushedConnected(brush: SignalValue) {
-    const pkg = this.inputPortMap.in.getSubsetPackage();
-    const items = pkg.getItems();
-    const dataset = pkg.getDataset() as TabularDataset;
+  private getBrushedInfo() {
+    let items: SubsetItem[] = [];
+    let dataset: TabularDataset;
 
-    if (!dataset) {
-      return;
+    if (this.inputPortMap.in.isConnected()) {
+      const pkg = this.inputPortMap.in.getSubsetPackage();
+      items = pkg.getItems();
+      dataset = pkg.getDataset() as TabularDataset;
+    } else {
+      dataset = this.dataset as TabularDataset;
+
+      // since there is no connected data flow at this point, there are no "filtered" items
+      // therefore, create dummy items for each entry in the dataset
+      for (let i = 0; i < dataset.getRows().length; i++) {
+        const item: SubsetItem = {
+          index: i,
+          visuals: {},
+        };
+
+        items.push(item);
+      }
     }
 
-    this.selection.clear();
-    const itemsInBrush = this.getItemsInBrush(dataset, items, brush);
-
-    itemsInBrush.forEach(i => this.selection.addItem(i.index));
-
-    this.computeSelection();
+    return { items, dataset };
   }
 
-  private onViewBrushedNotConnected(brush: SignalValue) {
-
-    const dataset = this.dataset as TabularDataset;
-    const items: SubsetItem[] = [];
-
-    // since there is no connected data flow at this point, there are no "filtered" items
-    // therefore, create dummy items for each entry in the dataset
-    for (let i = 0; i < dataset.getRows().length; i++) {
-      const item: SubsetItem = {
-        index: i,
-        visuals: {},
-      };
-
-      items.push(item);
+  private putSelectionInOutport(dataset: TabularDataset, itemsInBrush: SubsetItem[]) {
+    if (this.inputPortMap.in.isConnected()) {
+      this.computeSelection();
+    } else {
+      const pkg = new SubsetPackage(dataset, true);
+      const selectionPkg = pkg.subset(itemsInBrush.map(i => i.index));
+      this.outputPortMap.selection.updatePackage(selectionPkg);
     }
-
-    if (!dataset) {
-      return;
-    }
-
-    this.selection.clear();
-    const itemsInBrush = this.getItemsInBrush(dataset, items, brush);
-
-    itemsInBrush.forEach(i => this.selection.addItem(i.index));
-
-    const pkg = new SubsetPackage(dataset, true);
-    const selectionPkg = pkg.subset(itemsInBrush.map(i => i.index));
-    this.outputPortMap.selection.updatePackage(selectionPkg);
   }
 
   /**
@@ -373,12 +362,20 @@ export default class VegaView extends Visualization {
    * @param brush the data returned by the vl brush event
    */
   private onViewBrushed(name: string = 'brush', brush: SignalValue) {
+    const brushedInfo = this.getBrushedInfo();
+    const dataset = brushedInfo.dataset;
+    const items = brushedInfo.items;
 
-    if (this.inputPortMap.in.isConnected()) {
-      this.onViewBrushedConnected(brush);
-    } else {
-      this.onViewBrushedNotConnected(brush);
+    if (!dataset) {
+      return;
     }
+
+    this.selection.clear();
+
+    const itemsInBrush = this.getItemsInBrush(dataset, items, brush);
+    itemsInBrush.forEach(i => this.selection.addItem(i.index));
+
+    this.putSelectionInOutport(dataset, itemsInBrush);
 
     this.propagateSelection();
   }
