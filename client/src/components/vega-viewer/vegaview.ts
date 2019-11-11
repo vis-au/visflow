@@ -1,6 +1,6 @@
 import { range } from 'd3-array';
 import _ from 'lodash';
-import { SpecParser, SpecCompiler, PlotView, InlineDatasetNode, View } from 'revize';
+import { SpecParser, SpecCompiler, PlotView, InlineDatasetNode, View, MarkEncoding } from 'revize';
 import { SignalValue } from 'vega';
 import embed from 'vega-embed';
 import { Component } from 'vue-property-decorator';
@@ -146,12 +146,14 @@ export default class VegaView extends Visualization {
       return;
     }
     const dataset = this.getDataset();
-    const numericalColumns = dataset.getColumns()
+    const columns = dataset.getColumns();
+
+    const numericalColumns = columns
       .filter(column => isNumericalType(column.type))
       .slice(0, 2)
       .map(column => column.index);
 
-    const ordinalColumns = dataset.getColumns()
+    const ordinalColumns = columns
       .filter(column => !isNumericalType(column.type))
       .slice(0, 2)
       .map(column => column.index);
@@ -159,12 +161,29 @@ export default class VegaView extends Visualization {
     if (!!this.xColumn) {
       this.setXColumn(this.updateColumnOnDatasetChange(this.xColumn) as number, false);
     } else {
-      this.setXColumn(numericalColumns.shift() as number, false);
+      if (this.rootView !== null) {
+        if (this.rootView.getEncodedValue('x') !== null) {
+          const column = columns
+            .find(d => d.name === (this.rootView as View).getEncodedValue('x').field);
+          this.setXColumn(this.xColumn = (column as TabularColumn).index, false);
+        }
+      } else {
+        this.setXColumn(this.xColumn = numericalColumns.shift() as number, false);
+      }
     }
     if (!!this.yColumn) {
       this.setYColumn(this.yColumn = this.updateColumnOnDatasetChange(this.yColumn) as number, false);
     } else {
-      this.setYColumn(this.yColumn = numericalColumns.shift() as number, false);
+
+      if (this.rootView !== null) {
+        if (this.rootView.getEncodedValue('y') !== null) {
+          const column = columns
+            .find(d => d.name === (this.rootView as View).getEncodedValue('y').field);
+          this.setYColumn(this.yColumn = (column as TabularColumn).index, false);
+        }
+      } else {
+        this.setYColumn(this.yColumn = numericalColumns.shift() as number, false);
+      }
     }
     if (!!this.colorColumn) {
       this.setColorColumn(this.colorColumn = this.updateColumnOnDatasetChange(this.colorColumn) as number, false);
