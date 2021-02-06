@@ -58,6 +58,7 @@ export default class VegaView extends Visualization {
   private xColumn: number | null = null;
   private yColumn: number | null = null;
   private colorColumn: number | null = null;
+  private colorScheme: string[] | null = null;
 
   private specParser: SpecParser = new SpecParser();
   private specCompiler: SpecCompiler = new SpecCompiler();
@@ -198,6 +199,11 @@ export default class VegaView extends Visualization {
       if (this.rootView !== null && this.rootView.getEncodedValue('color') !== null) {
         const column = columns
           .find(d => d.name === (this.rootView as View).getEncodedValue('color').field);
+        if ((this.rootView as View).getEncodedValue('color').scale !== undefined) {
+          this.colorScheme = (this.rootView as View).getEncodedValue('color').scale.range;
+        } else {
+          this.colorScheme = null;
+        }
         this.setColorColumn(this.colorColumn = (column as TabularColumn).index, false);
       } else {
         this.setColorColumn(this.colorColumn = ordinalColumns.shift() as number, false);
@@ -229,7 +235,7 @@ export default class VegaView extends Visualization {
 
     this.rootView.getFlatHierarchy().forEach(view => {
       if (view !== this.rootView) {
-        view.dataTransformationNode = null;
+        view.dataTransformationNode = null as any;
       }
     });
 
@@ -327,6 +333,12 @@ export default class VegaView extends Visualization {
       view.setEncodedValue('x', { field: xColumn.name, type: xVegaType });
       view.setEncodedValue('y', { field: yColumn.name, type: yVegaType });
       view.setEncodedValue('color', { field: colorColumn.name, type: colorVegaType });
+
+      if (this.colorScheme !== null) {
+        view.setEncodedValue('color', { field: colorColumn.name, type: colorVegaType, scale: {
+          range: this.colorScheme }
+        })
+      }
     }
   }
 
@@ -508,11 +520,11 @@ export default class VegaView extends Visualization {
     }
 
     // get columns
-    Object.keys(datasetInSpec.values[0]).forEach((columnHeader, i) => {
+    Object.keys((datasetInSpec.values as any)[0]).forEach((columnHeader, i) => {
       columns.push({
         index: i,
         name: columnHeader,
-        type: this.getColumnType(datasetInSpec.values[0], columnHeader),
+        type: this.getColumnType((datasetInSpec.values as any)[0], columnHeader),
         hasDuplicate: true,
       });
     });
@@ -563,7 +575,7 @@ export default class VegaView extends Visualization {
       const item = {};
 
       columns.forEach((column) => {
-        item[column.name] = row[column.index];
+        (item as any)[column.name] = row[column.index];
       });
 
       return item;
