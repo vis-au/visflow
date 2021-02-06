@@ -166,7 +166,7 @@ const checkColumnType = (rows: TabularRows, columnIndex: number, name: string): 
 
 export const formatColumnType = (rows: TabularRows, column: TabularColumn) => {
   for (const row of rows) {
-    let value: number | string = row[column.index];
+    let value: number | string = row[column.index] || "";
     if (column.type === ValueType.DATE) {
       value = value.toString(); // new Date(value).getTime();
     } else if (isNumericalType(column.type)) {

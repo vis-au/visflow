@@ -18,6 +18,7 @@ import { VisualProperties } from '@/data/visuals';
 import * as history from './history';
 import template from './vegaview.html';
 import { VEGA_EXAMPLE_SPEC } from './vegaExampleSpec';
+import SocketConnector from './socketConnector';
 
 interface VegaViewSave {
   useSVG: boolean;
@@ -64,6 +65,7 @@ export default class VegaView extends Visualization {
   private vegaSpecString: string = !!this.vegaSpec ? JSON.stringify(this.vegaSpec, null, 2) : '{}';
   private viewsInVegaSpec: string[] = [];
   private selectedViewIndex: number = 0;
+  private socketConnector: SocketConnector | null = null;
 
   private itemProps: VegaViewItemProps[] = [];
 
@@ -118,6 +120,12 @@ export default class VegaView extends Visualization {
       outputPort.updatePackage(new SubsetPackage(this.dataset));
       this.portUpdated(outputPort);
     }
+
+    // connect to the websocket revize server for sync'd specs if a server is available
+    this.socketConnector = new SocketConnector();
+    this.socketConnector.subscribeToRemoteChanges((newSpec: any) => {
+      this.onInputSpecChanged({ target: { value: JSON.stringify(newSpec) }}, false)
+    });
 
     setTimeout(this.draw.bind(this), 1000);
   }
@@ -188,7 +196,14 @@ export default class VegaView extends Visualization {
     if (!!this.colorColumn) {
       this.setColorColumn(this.colorColumn = this.updateColumnOnDatasetChange(this.colorColumn) as number, false);
     } else {
-      this.setColorColumn(this.colorColumn = ordinalColumns.shift() as number, false);
+      if (this.rootView !== null && this.rootView.getEncodedValue('color') !== null) {
+        const column = columns
+          .find(d => d.name === (this.rootView as View).getEncodedValue('color').field);
+        this.setColorColumn(this.colorColumn = (column as TabularColumn).index, false);
+      } else {
+        this.setColorColumn(this.colorColumn = ordinalColumns.shift() as number, false);
+      }
+
     }
 
     this.draw();
@@ -575,7 +590,7 @@ export default class VegaView extends Visualization {
     this.setColorColumn(column);
   }
 
-  private onInputSpecChanged(event: any) {
+  private onInputSpecChanged(event: any, updateRemoteFlag: boolean=true) {
     const input = event.target.value;
     let newSpec = null;
 
@@ -593,6 +608,10 @@ export default class VegaView extends Visualization {
         outputPort.updatePackage(new SubsetPackage(this.dataset));
         this.portUpdated(outputPort);
         this.findDefaultColumns();
+
+        if (updateRemoteFlag && this.socketConnector !== null) {
+          this.socketConnector.publishNewSpec(newSpec);
+        }
       }
     }
   }
