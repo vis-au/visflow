@@ -18,7 +18,7 @@ import { VisualProperties } from '@/data/visuals';
 import * as history from './history';
 import template from './vegaview.html';
 import { VEGA_EXAMPLE_SPEC } from './vegaExampleSpec';
-import SocketConnector from './socketConnector';
+import SocketConnector, { getSocketConnector } from './socketConnector';
 
 interface VegaViewSave {
   useSVG: boolean;
@@ -65,7 +65,7 @@ export default class VegaView extends Visualization {
   private vegaSpecString: string = !!this.vegaSpec ? JSON.stringify(this.vegaSpec, null, 2) : '{}';
   private viewsInVegaSpec: string[] = [];
   private selectedViewIndex: number = 0;
-  private socketConnector: SocketConnector | null = null;
+  private socketConnector: SocketConnector = getSocketConnector();
 
   private itemProps: VegaViewItemProps[] = [];
 
@@ -122,7 +122,6 @@ export default class VegaView extends Visualization {
     }
 
     // connect to the websocket revize server for sync'd specs if a server is available
-    this.socketConnector = new SocketConnector();
     this.socketConnector.subscribeToRemoteChanges((newSpec: any) => {
       this.onInputSpecChanged({ target: { value: JSON.stringify(newSpec) }}, false)
     });
@@ -578,16 +577,19 @@ export default class VegaView extends Visualization {
   private onSelectXColumn(column: number, prevColumn: number | null) {
     this.commitHistory(history.selectXColumnEvent(this, column, prevColumn));
     this.setXColumn(column);
+    this.socketConnector.publishNewSpec(this.vegaSpec);
   }
 
   private onSelectYColumn(column: number, prevColumn: number | null) {
     this.commitHistory(history.selectYColumnEvent(this, column, prevColumn));
     this.setYColumn(column);
+    this.socketConnector.publishNewSpec(this.vegaSpec);
   }
 
   private onSelectColorColumn(column: number, prevColumn: number | null) {
     this.commitHistory(history.selectYColumnEvent(this, column, prevColumn));
     this.setColorColumn(column);
+    this.socketConnector.publishNewSpec(this.vegaSpec);
   }
 
   private onInputSpecChanged(event: any, updateRemoteFlag: boolean=true) {
@@ -609,7 +611,7 @@ export default class VegaView extends Visualization {
         this.portUpdated(outputPort);
         this.findDefaultColumns();
 
-        if (updateRemoteFlag && this.socketConnector !== null) {
+        if (updateRemoteFlag) {
           this.socketConnector.publishNewSpec(newSpec);
         }
       }

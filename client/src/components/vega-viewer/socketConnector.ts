@@ -2,6 +2,7 @@ import { broadcastNewVersion, connect, subscribeToRemoteChanges } from 'revize';
 
 export default class SocketConnector {
   private currentVersion: number = -1;
+  private currentSpec: any = {};
   private onSpecChangedCallbacks: ((spec: any) => void)[] = [];
 
   constructor() {
@@ -18,15 +19,27 @@ export default class SocketConnector {
       return;
     }
     this.currentVersion = version;
+    this.currentSpec = spec;
 
     this.onSpecChangedCallbacks.forEach(callback => callback(spec));
   }
 
   public subscribeToRemoteChanges(callback: (spec: any) => void) {
+    callback(this.currentSpec);
     this.onSpecChangedCallbacks.push(callback);
   }
 
   public publishNewSpec(newSpec: any) {
     broadcastNewVersion(newSpec, this.currentVersion);
   }
+
+  public getCurrentSpec() {
+    return this.currentSpec;
+  }
+}
+
+const instance = new SocketConnector();
+
+export function getSocketConnector() {
+  return instance;
 }
