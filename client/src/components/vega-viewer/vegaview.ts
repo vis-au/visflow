@@ -193,18 +193,20 @@ export default class VegaView extends Visualization {
         this.setYColumn(this.yColumn = numericalColumns.shift() as number, false);
       }
     }
+
+    const colorColumn = columns
+      .find(d => d.name === (this.rootView as View).getEncodedValue('color').field);
+    if ((this.rootView as View).getEncodedValue('color').scale !== undefined) {
+      this.colorScheme = (this.rootView as View).getEncodedValue('color').scale.range;
+    } else {
+      this.colorScheme = null;
+    }
+
     if (!!this.colorColumn) {
-      this.setColorColumn(this.colorColumn = this.updateColumnOnDatasetChange(this.colorColumn) as number, false);
+      this.setColorColumn(this.colorColumn = (colorColumn as TabularColumn).index, false);
     } else {
       if (this.rootView !== null && this.rootView.getEncodedValue('color') !== null) {
-        const column = columns
-          .find(d => d.name === (this.rootView as View).getEncodedValue('color').field);
-        if ((this.rootView as View).getEncodedValue('color').scale !== undefined) {
-          this.colorScheme = (this.rootView as View).getEncodedValue('color').scale.range;
-        } else {
-          this.colorScheme = null;
-        }
-        this.setColorColumn(this.colorColumn = (column as TabularColumn).index, false);
+        this.setColorColumn(this.colorColumn = (colorColumn as TabularColumn).index, false);
       } else {
         this.setColorColumn(this.colorColumn = ordinalColumns.shift() as number, false);
       }
