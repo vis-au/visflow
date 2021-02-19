@@ -73,7 +73,7 @@
     "moment": "^2.22.2",
     "moment-timezone": "^0.5.21",
     "node-sass": "^4.9.0",
-    "revize": "^1.0.4",
+    "revize": "^1.0.5",
     "sass-loader": "^7.0.1",
     "stylelint": "^9.2.1",
     "stylelint-config-recommended-scss": "^3.2.0",
