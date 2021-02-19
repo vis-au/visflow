@@ -1,4 +1,4 @@
-import { broadcastNewVersion, connect, subscribeToRemoteChanges } from 'revize';
+import { sendNewVersion, connect, subscribeToRemoteChanges } from 'revize';
 
 export default class SocketConnector {
   private currentVersion: number = -1;
@@ -30,7 +30,8 @@ export default class SocketConnector {
   }
 
   public publishNewSpec(newSpec: any) {
-    broadcastNewVersion(newSpec, this.currentVersion);
+    // broadcastNewVersion(newSpec, this.currentVersion);
+    sendNewVersion(newSpec, this.currentVersion);
   }
 
   public getCurrentSpec() {
