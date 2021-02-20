@@ -618,12 +618,16 @@ export default class VegaView extends Visualization {
       if (!!newSpec) {
         this.vegaSpec = newSpec;
         this.vegaSpecString = input;
-        this.rootView = this.specParser.parse(this.vegaSpec);
-        this.dataset = this.getDatasetFromSpec();
-        const outputPort = this.outputPortMap.out;
-        outputPort.updatePackage(new SubsetPackage(this.dataset));
-        this.portUpdated(outputPort);
-        this.findDefaultColumns();
+        try {
+          this.rootView = this.specParser.parse(this.vegaSpec);
+          this.dataset = this.getDatasetFromSpec();
+          const outputPort = this.outputPortMap.out;
+          outputPort.updatePackage(new SubsetPackage(this.dataset));
+          this.portUpdated(outputPort);
+          this.findDefaultColumns();
+        } catch(e: any) {
+          console.log(e)
+        }
 
         if (updateRemoteFlag) {
           this.socketConnector.publishNewSpec(newSpec);
