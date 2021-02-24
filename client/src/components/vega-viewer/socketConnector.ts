@@ -1,3 +1,4 @@
+import { createNode } from '@/store/flowsense/update/util';
 import { sendNewVersion, connect, subscribeToRemoteChanges } from 'revize';
 
 export default class SocketConnector {
@@ -7,6 +8,16 @@ export default class SocketConnector {
 
   constructor() {
     this.setupConnection();
+
+    window.setTimeout(() => {
+      // if a connection can be established, create a vega-lite node.
+      if (this.currentSpec.$schema !== undefined) {
+        createNode({
+          type: "vegaimportview",
+          activate: true
+        });
+      }
+    }, 1000);
   }
 
   private setupConnection() {
