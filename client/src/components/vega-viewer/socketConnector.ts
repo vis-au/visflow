@@ -17,7 +17,7 @@ export default class SocketConnector {
           activate: true
         });
       }
-    }, 1000);
+    }, 4000);
   }
 
   private setupConnection() {
